@@ -159,7 +159,9 @@ Follow the official [FastAPI Tutorial](https://fastapi.tiangolo.com/tutorial/) g
 - Follow [PEP 484](https://peps.python.org/pep-0484/) for type hints
 - Use `mypy` for static type checking
 - Prefer using the `|` operator over `Union` for type hints
-- Use `Annotated` for dependency injection
+- Use `Annotated` for dependency injection and documentation
+- Ensure all dependencies have proper type stubs installed
+- For FastAPI and pytest decorators, use proper type annotations
 - Example:
   ```python
   from typing import Annotated
@@ -239,6 +241,27 @@ async def test_async_operation(async_client: AsyncClient):
 - If using lifespan events, use `LifespanManager` from asgi-lifespan
 - Create fixtures in `conftest.py` for reusable test components
 - Use proper type annotations in test functions and fixtures
+- Ensure pre-commit hooks pass before committing
+
+#### Pre-commit Configuration
+When setting up pre-commit hooks for mypy:
+- Include all necessary type stubs in additional_dependencies
+- Configure mypy to use project settings with `--config-file=pyproject.toml`
+- Example pre-commit mypy configuration:
+```yaml
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+    -   id: mypy
+        args: ["--config-file=pyproject.toml"]
+        additional_dependencies:
+        - pydantic>=2.5.3
+        - pydantic-settings>=2.1.0
+        - fastapi>=0.109.0
+        - sqlalchemy[mypy]>=2.0.25
+        - types-python-jose>=3.3.4
+        - types-passlib>=1.7.7
+```
 
 #### Test Database Handling
 ```python
