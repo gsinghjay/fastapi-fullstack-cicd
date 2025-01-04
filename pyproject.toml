@@ -1,0 +1,117 @@
+[tool.poetry]
+name = "fastapi-fullstack-cicd"
+version = "0.1.0"
+description = "A FastAPI application with best practices"
+authors = ["Jay Singh <gsinghjay@gmail.com>"]
+readme = "README.md"
+packages = [{include = "app"}]
+license = "MIT"
+repository = "https://github.com/gsinghjay/fastapi-fullstack-cicd"
+documentation = "https://github.com/gsinghjay/fastapi-fullstack-cicd#readme"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.12"
+fastapi = "^0.109.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+pydantic = {extras = ["email"], version = "^2.5.3"}
+pydantic-settings = "^2.1.0"
+python-dotenv = "^1.0.0"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.25"}
+alembic = "^1.13.1"
+aiosqlite = "^0.19.0"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+emails = "^0.6"
+python-multipart = "^0.0.6"
+psycopg2-binary = "^2.9.9"
+slowapi = "^0.1.8"
+structlog = "^24.1.0"
+prometheus-client = "^0.19.0"
+idna = "^3.10"
+httpx = "^0.26.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+pytest-asyncio = "^0.23.3"
+pytest-cov = "^4.1.0"
+ruff = "^0.1.14"
+black = "^24.1.1"
+mypy = "^1.8.0"
+pre-commit = "^3.6.0"
+python-semantic-release = "^9.15.2"
+bandit = "^1.7.6"
+safety = "^2.3.5"
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+select = ["E", "F", "B", "I", "N", "UP", "PL", "RUF"]
+ignore = []
+line-length = 88
+target-version = "py311"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+show_error_codes = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+strict_optional = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+addopts = "--cov=app --cov-report=term-missing --cov-report=xml"
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*"]
+
+[tool.semantic_release]
+version_variables = ["app/__init__.py:__version__"]
+version_toml = ["pyproject.toml:tool.poetry.version"]
+commit_parser = "angular"
+upload_to_pypi = false
+upload_to_release = true
+build_command = "pip install poetry && poetry build"
+branch = "main"
+changelog_sections = [
+    "feature",
+    "fix",
+    "breaking",
+    "documentation",
+    "performance",
+    "refactor"
+]
+commit_author = "github-actions <actions@github.com>"
+
+[tool.poetry.scripts]
+# Development server
+dev = "uvicorn:run"
+
+# Quality checks as Python entry points
+lint = "ruff:main"
+format = "ruff:format"
+typecheck = "mypy:main"
+security-check = "bandit.cli.main:main"
+
+# Testing
+test = "pytest:main"
