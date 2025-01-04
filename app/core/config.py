@@ -51,7 +51,7 @@ class Settings(BaseSettings):
 
     # JWT Authentication
     SECRET_KEY: Annotated[str, Field(min_length=32)] = Field(
-        default="your-secret-key-here",
+        default="c0d650e6c8824e1ad99d0941c39692f8c502b2f50d22f31d",
         description="Secret key for JWT token encoding.",
     )
     ACCESS_TOKEN_EXPIRE_MINUTES: Annotated[int, Field(gt=0)] = Field(
