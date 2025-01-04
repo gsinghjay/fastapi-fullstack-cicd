@@ -1,48 +1,43 @@
-from datetime import datetime
+import uuid
+from typing import Annotated
 
-from pydantic import BaseModel, EmailStr
+from annotated_types import MaxLen, MinLen
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class UserBase(BaseModel):
-    """Shared properties for user schemas."""
+    """Base user schema."""
 
     email: EmailStr
-    full_name: str | None = None
+    full_name: str
     is_active: bool = True
+    is_superuser: bool = False
 
 
 class UserCreate(UserBase):
-    """Properties to receive via API on creation."""
+    """User creation schema."""
 
-    password: str
+    password: Annotated[str, MinLen(8), MaxLen(100)]
 
 
 class UserUpdate(UserBase):
-    """Properties to receive via API on update."""
+    """User update schema."""
 
-    password: str | None = None
-
-
-class UserInDBBase(UserBase):
-    """Properties shared by models stored in DB."""
-
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        """Pydantic model configuration."""
-
-        from_attributes = True
+    password: Annotated[str, MinLen(8), MaxLen(100)] | None = None
 
 
-class User(UserInDBBase):
-    """Additional properties to return via API."""
+class UserInDB(UserBase):
+    """User DB schema."""
 
-    pass
-
-
-class UserInDB(UserInDBBase):
-    """Additional properties stored in DB."""
-
+    id: uuid.UUID
     hashed_password: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class User(UserBase):
+    """User response schema."""
+
+    id: uuid.UUID
+
+    model_config = ConfigDict(from_attributes=True)
