@@ -29,6 +29,8 @@ structlog = "^24.1.0"
 prometheus-client = "^0.19.0"
 idna = "^3.10"
 httpx = "^0.26.0"
+types-python-jose = "^3.3.4"
+types-passlib = "^1.7.7"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"
@@ -41,16 +43,22 @@ pre-commit = "^3.6.0"
 python-semantic-release = "^9.15.2"
 bandit = "^1.7.6"
 safety = "^2.3.5"
+types-aiofiles = "^23.2.0"
+types-requests = "^2.31.0"
+types-setuptools = "^69.0.0"
+types-python-dateutil = "^2.8.19"
 
 [build-system]
 requires = ["poetry-core>=1.9.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-select = ["E", "F", "B", "I", "N", "UP", "PL", "RUF"]
-ignore = []
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "I", "N", "UP", "PL", "RUF"]
+ignore = []
 
 [tool.black]
 line-length = 88
@@ -65,14 +73,14 @@ disallow_untyped_defs = true
 check_untyped_defs = true
 show_error_codes = true
 disallow_incomplete_defs = true
-disallow_untyped_decorators = true
+disallow_untyped_decorators = false
 no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 plugins = ["pydantic.mypy"]
-ignore_missing_imports = true
+ignore_missing_imports = false
 strict_optional = true
 
 [tool.pytest.ini_options]

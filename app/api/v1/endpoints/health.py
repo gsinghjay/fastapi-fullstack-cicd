@@ -8,7 +8,7 @@ from app.api.deps import DBSession
 router = APIRouter()
 
 
-@router.get(  # type: ignore[misc]
+@router.get(
     "",
     response_model=dict[str, str],
     responses={

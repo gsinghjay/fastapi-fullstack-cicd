@@ -31,8 +31,11 @@ repos:
     rev: v1.14.1
     hooks:
     -   id: mypy
+        args: ["--config-file=pyproject.toml"]
         additional_dependencies:
         - pydantic>=2.5.3
+        - pydantic-settings>=2.1.0
+        - fastapi>=0.109.0
         - sqlalchemy[mypy]>=2.0.25
         - types-python-jose>=3.3.4
         - types-passlib>=1.7.7
@@ -41,6 +44,9 @@ repos:
         - types-setuptools>=69.0.0
         - types-python-dateutil>=2.8.19
         - prometheus_client>=0.19.0
+        - httpx>=0.26.0
+        - pytest>=7.4.4
+        - pytest-asyncio>=0.23.3
 
 -   repo: https://github.com/PyCQA/bandit
     rev: 1.8.0

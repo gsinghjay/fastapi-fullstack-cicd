@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Any
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -8,7 +9,7 @@ from app.core.config import settings
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def create_access_token(data: dict) -> str:
+def create_access_token(data: dict[str, Any]) -> str:
     """
     Create JWT access token.
 
@@ -21,10 +22,11 @@ def create_access_token(data: dict) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm="HS256")
+    encoded_jwt: str = jwt.encode(to_encode, settings.SECRET_KEY, algorithm="HS256")
+    return encoded_jwt
 
 
-def decode_access_token(token: str) -> dict | None:
+def decode_access_token(token: str) -> dict[str, Any] | None:
     """
     Decode JWT access token.
 
@@ -35,7 +37,10 @@ def decode_access_token(token: str) -> dict | None:
         The decoded token data or None if invalid.
     """
     try:
-        return jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        decoded_token: dict[str, Any] = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=["HS256"]
+        )
+        return decoded_token
     except JWTError:
         return None
 
@@ -51,7 +56,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if the password matches, False otherwise.
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    is_valid: bool = pwd_context.verify(plain_password, hashed_password)
+    return is_valid
 
 
 def get_password_hash(password: str) -> str:
@@ -64,4 +70,5 @@ def get_password_hash(password: str) -> str:
     Returns:
         The hashed password.
     """
-    return pwd_context.hash(password)
+    hashed_password: str = pwd_context.hash(password)
+    return hashed_password

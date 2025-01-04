@@ -25,7 +25,7 @@ class AppError(Exception):
 def configure_exceptions(app: FastAPI) -> None:
     """Configure exception handlers for the FastAPI application."""
 
-    @app.exception_handler(AppError)  # type: ignore[misc]
+    @app.exception_handler(AppError)
     async def app_exception_handler(
         request: Request,
         exc: AppError,
@@ -38,7 +38,7 @@ def configure_exceptions(app: FastAPI) -> None:
             headers=headers,
         )
 
-    @app.exception_handler(StarletteHTTPException)  # type: ignore[misc]
+    @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(
         request: Request,
         exc: StarletteHTTPException,
@@ -50,7 +50,7 @@ def configure_exceptions(app: FastAPI) -> None:
             headers=getattr(exc, "headers", None),
         )
 
-    @app.exception_handler(Exception)  # type: ignore[misc]
+    @app.exception_handler(Exception)
     async def unhandled_exception_handler(
         request: Request,
         exc: Exception,

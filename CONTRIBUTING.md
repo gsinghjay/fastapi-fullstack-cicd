@@ -206,14 +206,61 @@ Follow the official [FastAPI Tutorial](https://fastapi.tiangolo.com/tutorial/) g
 - Write both sync and async tests as needed
 - Use fixtures for common test setups
 - Follow FastAPI's testing guidelines:
-  ```python
-  from fastapi.testclient import TestClient
 
-  def test_read_main(client: TestClient):
-      response = client.get("/")
-      assert response.status_code == 200
-      assert response.json() == {"message": "Hello World"}
-  ```
+#### Synchronous Testing
+```python
+from fastapi.testclient import TestClient
+
+def test_read_main(client: TestClient):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Hello World"}
+```
+
+#### Asynchronous Testing
+For async database operations or when you need to test async functionality:
+```python
+import pytest
+from httpx import AsyncClient, ASGITransport
+
+@pytest.mark.anyio
+async def test_async_operation(async_client: AsyncClient):
+    response = await async_client.get("/")
+    assert response.status_code == 200
+```
+
+#### Testing Best Practices
+- Use `@pytest.mark.anyio` for async test functions
+- Use `AsyncClient` with `ASGITransport` for async API testing
+- Use async fixtures for database operations
+- Properly handle test database setup and teardown
+- Use dependency overrides for mocking dependencies
+- Ensure proper event loop handling in async tests
+- If using lifespan events, use `LifespanManager` from asgi-lifespan
+- Create fixtures in `conftest.py` for reusable test components
+- Use proper type annotations in test functions and fixtures
+
+#### Test Database Handling
+```python
+@pytest.fixture(autouse=True)
+async def setup_db() -> AsyncGenerator[None, None]:
+    """Create all tables for testing and clean up after tests."""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+```
+
+#### Event Loop Handling
+```python
+@pytest.fixture(scope="session")
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+    """Create an instance of the default event loop for each test case."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+```
 
 ## Pre-commit Hooks
 
