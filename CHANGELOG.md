@@ -1,6 +1,86 @@
 # CHANGELOG
 
 
+## v0.2.0 (2025-01-04)
+
+### Code Style
+
+- **crud**: Update type annotations to use modern syntax
+  ([`1eebf9a`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/1eebf9a70444ef79b3d9b42ceb48ed00eede80e4))
+
+### Documentation
+
+- **contributing**: Enhance testing and type checking guidelines
+  ([`a0684c1`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/a0684c1f012ec9d87afeaa0c7b35d70f6d383a27))
+
+Added sections on type checking configuration and pre-commit setup. Enhanced documentation for async
+  testing best practices with examples of fixtures and type annotations.
+
+- **contributing**: Update testing guidelines and best practices
+  ([`9412a52`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/9412a520db3d97583df5010ddd6fc297d657f2ff))
+
+- **qa**: Add comprehensive quality assurance documentation
+  ([`a7dc50c`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/a7dc50c20fc6292ba66c5e24af3a87e76453ed21))
+
+- **readme**: Simplify and improve user focus
+  ([`1c6176e`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/1c6176e660c82abdad522820c81cc3562de67ece))
+
+Streamlined README.md by removing duplicate content from CONTRIBUTING.md. Improved quick start guide
+  and focused on essential user information.
+
+### Features
+
+- **api**: Add health check endpoints with database verification
+  ([`e7e52a7`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/e7e52a7d75abefe9556fbec1be71395e689fa74c))
+
+- **db**: Add SQLAlchemy base class with common model functionality
+  ([`ee41253`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/ee412532c7a95eccfa144987c556bcd8220cfa9c))
+
+- **db**: Implement async session management with proper typing
+  ([`3b7f14c`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/3b7f14c3d9641337385386fa1109d0337239f48f))
+
+- **infra**: Add Docker and PostgreSQL test infrastructure
+  ([`24ba312`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/24ba3128b92e821f99037c02587a5c6fbdac1409))
+
+- Add Docker test configuration - Configure test environment variables - Add PostgreSQL container
+  setup - Update project dependencies
+
+- **tests**: Implement pytest fixtures for database and Docker testing
+  ([`2f13465`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/2f13465cf87ef754922cde7abb1c3416c3628856))
+
+### Refactoring
+
+- **api**: Improve user endpoints with better error handling
+  ([`acf5da8`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/acf5da8adb7d1e9795c73f39e2eee3c1ca588845))
+
+- **config**: Update configuration management for test environment
+  ([`1a540b8`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/1a540b8f8639b782d26c6b1362d708d7c4695797))
+
+- **db**: Reorganize database initialization and configuration
+  ([`a1479e0`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/a1479e0c3d723d17710103f5c7203b240561ae70))
+
+- **deps**: Update dependency injection with proper async handling
+  ([`eff48e3`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/eff48e37f5527c06000207e18fdc801e224f14c2))
+
+- **models**: Enhance user model with better type definitions
+  ([`b767086`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/b767086a45a5d108341f909cadf03ec2ae25c6ad))
+
+- **schemas**: Update user schemas with improved validation
+  ([`d72ba08`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/d72ba08216af9ffeab3de559b3f6be7a04835613))
+
+- **test**: Enhance testing infrastructure and type safety
+  ([`683b175`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/683b175b25987b3a8457b6257e78b7cf56859142))
+
+- Added comprehensive async testing setup with proper fixtures and type annotations. - Updated
+  testing documentation with FastAPI best practices. - Improved type checking with stricter mypy
+  configuration and proper type stubs. - Configured pre-commit to use project's mypy settings.
+
+### Testing
+
+- **api**: Add health check endpoint tests
+  ([`7795ada`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/7795ada1841d8b43c9c1d3969576d14dcdc10851))
+
+
 ## v0.1.0 (2025-01-04)
 
 ### Chores
