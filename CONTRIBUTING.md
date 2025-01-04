@@ -207,7 +207,9 @@ Follow the official [FastAPI Tutorial](https://fastapi.tiangolo.com/tutorial/) g
 - Maintain test coverage above 80%
 - Write both sync and async tests as needed
 - Use fixtures for common test setups
-- Follow FastAPI's testing guidelines:
+- Follow our comprehensive testing guidelines in [QA.md](QA.md)
+
+For detailed testing documentation, including database testing, API testing, and CI/CD integration, please refer to our [Quality Assurance Guide](QA.md).
 
 #### Synchronous Testing
 ```python
@@ -284,6 +286,146 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     yield loop
     loop.close()
 ```
+
+#### Testing PostgreSQL with SQLAlchemy
+
+When testing with PostgreSQL and SQLAlchemy, follow these guidelines:
+
+##### Database Test Setup
+- Use Docker for test database isolation
+- Create a separate test database configuration
+- Use `asyncpg` as the database driver
+- Implement proper connection pooling
+- Example test database setup:
+```python
+@pytest.fixture(scope="session")
+async def test_engine(postgres_service: str) -> AsyncGenerator[AsyncEngine, None]:
+    """Create the test database engine."""
+    engine = create_async_engine(
+        postgres_service,
+        echo=True,
+        poolclass=NullPool  # Use NullPool for clean connections
+    )
+
+    # Create tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+    try:
+        yield engine
+    finally:
+        await engine.dispose()
+```
+
+##### Database Session Management
+- Use session fixtures for database operations
+- Implement proper transaction rollback
+- Ensure test isolation
+- Example session fixture:
+```python
+@pytest.fixture
+async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
+    """Get a test database session with automatic rollback."""
+    testing_session_local = async_sessionmaker(
+        bind=test_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+
+    async with testing_session_local() as session:
+        async with session.begin():
+            yield session
+            # Transaction will be rolled back automatically
+```
+
+##### Testing Database Operations
+- Test CRUD operations thoroughly
+- Verify data persistence and retrieval
+- Test transaction boundaries
+- Example test:
+```python
+@pytest.mark.integration
+@pytest.mark.anyio
+async def test_create_user(async_client: AsyncClient, db_session: AsyncSession) -> None:
+    """Test user creation."""
+    user_data = {
+        "email": "test@example.com",
+        "password": "testpassword",
+        "full_name": "Test User",
+        "is_active": True
+    }
+    response = await async_client.post("/api/v1/users/", json=user_data)
+    assert response.status_code == status.HTTP_201_CREATED
+    data = response.json()
+    assert data["email"] == user_data["email"]
+```
+
+##### FastAPI Event Handlers
+- Use FastAPI's startup and shutdown events for database setup
+- Implement proper connection lifecycle management
+- Handle database migrations during testing
+- Example event handlers:
+```python
+from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+
+async def start_db(app: FastAPI) -> None:
+    """Initialize database connection."""
+    app.state.engine = create_async_engine(settings.DATABASE_URL)
+
+async def stop_db(app: FastAPI) -> None:
+    """Close database connection."""
+    await app.state.engine.dispose()
+
+app = FastAPI(
+    title="FastAPI App",
+    lifespan=Lifespan(
+        on_startup=[start_db],
+        on_shutdown=[stop_db]
+    )
+)
+```
+
+##### Best Practices for Database Testing
+1. **Test Data Management**:
+   - Use factories or fixtures for test data
+   - Clean up test data after each test
+   - Avoid test data dependencies
+
+2. **Transaction Management**:
+   - Use nested transactions for test isolation
+   - Ensure proper rollback after tests
+   - Handle transaction boundaries correctly
+
+3. **Connection Pooling**:
+   - Use appropriate pool settings for tests
+   - Clean up connections after tests
+   - Monitor connection usage
+
+4. **Error Handling**:
+   - Test database error scenarios
+   - Verify error responses
+   - Test transaction rollback on errors
+
+5. **Performance Considerations**:
+   - Use connection pooling appropriately
+   - Minimize database operations in tests
+   - Use bulk operations when possible
+
+6. **Security Testing**:
+   - Test database access controls
+   - Verify user permissions
+   - Test SQL injection prevention
+
+7. **Integration Testing**:
+   - Test complete API endpoints
+   - Verify database state changes
+   - Test concurrent operations
+
+Remember to always use asynchronous operations with SQLAlchemy and FastAPI, and ensure proper cleanup of database resources after tests.
 
 ## Pre-commit Hooks
 
