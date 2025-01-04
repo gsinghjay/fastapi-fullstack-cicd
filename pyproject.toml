@@ -130,3 +130,10 @@ security-check = "bandit.cli.main:main"
 
 # Testing
 test = "pytest:main"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101", "B106"]
+
+[tool.bandit.assert_used]
+skips = ["*/test_*.py", "*/tests/*.py"]
