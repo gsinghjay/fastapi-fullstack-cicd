@@ -20,43 +20,37 @@ repos:
     -   id: mixed-line-ending
         args: ['--fix=lf']
 
--   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.5
-    hooks:
-    -   id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
-    -   id: ruff-format
-
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.1
-    hooks:
-    -   id: mypy
-        args: ["--config-file=pyproject.toml"]
-        additional_dependencies:
-        - pydantic>=2.5.3
-        - pydantic-settings>=2.1.0
-        - fastapi>=0.109.0
-        - sqlalchemy[mypy]>=2.0.25
-        - types-python-jose>=3.3.4
-        - types-passlib>=1.7.7
-        - types-aiofiles>=23.2.0
-        - types-requests>=2.31.0
-        - types-setuptools>=69.0.0
-        - types-python-dateutil>=2.8.19
-        - prometheus_client>=0.19.0
-        - httpx>=0.26.0
-        - pytest>=7.4.4
-        - pytest-asyncio>=0.23.3
-
--   repo: https://github.com/PyCQA/bandit
-    rev: 1.8.0
-    hooks:
-    -   id: bandit
-        args: ["-c", "pyproject.toml"]
-        additional_dependencies: ["bandit[toml]"]
-
 -   repo: local
     hooks:
+    -   id: ruff-check
+        name: ruff check
+        entry: poetry run ruff check
+        language: system
+        types: [python]
+        require_serial: true
+
+    -   id: ruff-format
+        name: ruff format
+        entry: poetry run ruff format
+        language: system
+        types: [python]
+        require_serial: true
+
+    -   id: mypy
+        name: mypy
+        entry: poetry run mypy
+        language: system
+        types: [python]
+        require_serial: true
+
+    -   id: bandit
+        name: bandit
+        entry: poetry run bandit
+        language: system
+        types: [python]
+        args: ["-c", "pyproject.toml"]
+        require_serial: true
+
     -   id: poetry-check
         name: poetry check
         entry: poetry check

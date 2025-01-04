@@ -1,17 +1,26 @@
-from pydantic import AnyHttpUrl, field_validator
+from typing import Annotated
+
+from pydantic import AnyHttpUrl, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings."""
 
+    # Application
     VERSION: str = "0.1.0"
     APP_NAME: str = "FastAPI App"
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = False
 
-    # BACKEND_CORS_ORIGINS is a comma-separated list of origins
-    BACKEND_CORS_ORIGINS: list[AnyHttpUrl] = []
+    # CORS
+    BACKEND_CORS_ORIGINS: list[AnyHttpUrl] = Field(
+        default=[
+            AnyHttpUrl("http://localhost:3000"),
+            AnyHttpUrl("http://localhost:8000"),
+        ],
+        description="List of origins that can make cross-origin requests.",
+    )
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
@@ -35,14 +44,31 @@ class Settings(BaseSettings):
         raise ValueError(value)
 
     # Database
-    DATABASE_URL: str
+    DATABASE_URL: str = Field(
+        default="postgresql+asyncpg://postgres:postgres@localhost:5432/app",
+        description="Database connection URL.",
+    )
 
-    # JWT
-    SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # JWT Authentication
+    SECRET_KEY: Annotated[str, Field(min_length=32)] = Field(
+        default="your-secret-key-here",
+        description="Secret key for JWT token encoding.",
+    )
+    ACCESS_TOKEN_EXPIRE_MINUTES: Annotated[int, Field(gt=0)] = Field(
+        default=30,
+        description="Number of minutes after which access tokens expire.",
+    )
+    ALGORITHM: str = Field(
+        default="HS256",
+        description="Algorithm used for JWT token encoding.",
+        pattern="^(HS256|HS384|HS512|RS256|RS384|RS512|ES256|ES384|ES512|PS256|PS384|PS512)$",
+    )
 
     model_config = SettingsConfigDict(
-        env_file=".env", case_sensitive=True, validate_default=True, extra="allow"
+        env_file=".env",
+        case_sensitive=True,
+        validate_default=True,
+        extra="allow",
     )
 
 
