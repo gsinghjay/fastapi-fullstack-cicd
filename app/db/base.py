@@ -1,17 +1,4 @@
-from typing import ClassVar
+"""Import all models here for SQLAlchemy to discover them."""
 
-from sqlalchemy import MetaData
-from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass
-
-
-class Base(MappedAsDataclass, DeclarativeBase):
-    """Base class for all database models."""
-
-    metadata: ClassVar[MetaData]
-
-    @declared_attr.directive
-    @classmethod
-    def __tablename__(cls) -> str:
-        """Generate __tablename__ automatically from class name."""
-        return cls.__name__.lower()
+from app.db.base_class import Base  # noqa: F401
+from app.models.user import User  # noqa: F401
