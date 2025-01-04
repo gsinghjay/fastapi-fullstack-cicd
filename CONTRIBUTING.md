@@ -159,7 +159,9 @@ Follow the official [FastAPI Tutorial](https://fastapi.tiangolo.com/tutorial/) g
 - Follow [PEP 484](https://peps.python.org/pep-0484/) for type hints
 - Use `mypy` for static type checking
 - Prefer using the `|` operator over `Union` for type hints
-- Use `Annotated` for dependency injection
+- Use `Annotated` for dependency injection and documentation
+- Ensure all dependencies have proper type stubs installed
+- For FastAPI and pytest decorators, use proper type annotations
 - Example:
   ```python
   from typing import Annotated
@@ -206,14 +208,82 @@ Follow the official [FastAPI Tutorial](https://fastapi.tiangolo.com/tutorial/) g
 - Write both sync and async tests as needed
 - Use fixtures for common test setups
 - Follow FastAPI's testing guidelines:
-  ```python
-  from fastapi.testclient import TestClient
 
-  def test_read_main(client: TestClient):
-      response = client.get("/")
-      assert response.status_code == 200
-      assert response.json() == {"message": "Hello World"}
-  ```
+#### Synchronous Testing
+```python
+from fastapi.testclient import TestClient
+
+def test_read_main(client: TestClient):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Hello World"}
+```
+
+#### Asynchronous Testing
+For async database operations or when you need to test async functionality:
+```python
+import pytest
+from httpx import AsyncClient, ASGITransport
+
+@pytest.mark.anyio
+async def test_async_operation(async_client: AsyncClient):
+    response = await async_client.get("/")
+    assert response.status_code == 200
+```
+
+#### Testing Best Practices
+- Use `@pytest.mark.anyio` for async test functions
+- Use `AsyncClient` with `ASGITransport` for async API testing
+- Use async fixtures for database operations
+- Properly handle test database setup and teardown
+- Use dependency overrides for mocking dependencies
+- Ensure proper event loop handling in async tests
+- If using lifespan events, use `LifespanManager` from asgi-lifespan
+- Create fixtures in `conftest.py` for reusable test components
+- Use proper type annotations in test functions and fixtures
+- Ensure pre-commit hooks pass before committing
+
+#### Pre-commit Configuration
+When setting up pre-commit hooks for mypy:
+- Include all necessary type stubs in additional_dependencies
+- Configure mypy to use project settings with `--config-file=pyproject.toml`
+- Example pre-commit mypy configuration:
+```yaml
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+    -   id: mypy
+        args: ["--config-file=pyproject.toml"]
+        additional_dependencies:
+        - pydantic>=2.5.3
+        - pydantic-settings>=2.1.0
+        - fastapi>=0.109.0
+        - sqlalchemy[mypy]>=2.0.25
+        - types-python-jose>=3.3.4
+        - types-passlib>=1.7.7
+```
+
+#### Test Database Handling
+```python
+@pytest.fixture(autouse=True)
+async def setup_db() -> AsyncGenerator[None, None]:
+    """Create all tables for testing and clean up after tests."""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+```
+
+#### Event Loop Handling
+```python
+@pytest.fixture(scope="session")
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+    """Create an instance of the default event loop for each test case."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+```
 
 ## Pre-commit Hooks
 
