@@ -6,9 +6,23 @@ from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 
 
+async def get_users(db: AsyncSession) -> list[User]:
+    """
+    Get all users.
+
+    Args:
+        db: The database session.
+
+    Returns:
+        List of all users.
+    """
+    result = await db.execute(select(User))
+    return list(result.scalars().all())
+
+
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     """
-    Get user by email.
+    Get a user by email.
 
     Args:
         db: The database session.
@@ -32,13 +46,13 @@ async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
     Returns:
         The created user.
     """
+    user_data = user_in.model_dump(exclude={"password"})
     db_user = User(
-        email=user_in.email,
+        **user_data,
         hashed_password=get_password_hash(user_in.password),
-        full_name=user_in.full_name,
     )
     db.add(db_user)
-    await db.commit()
+    await db.flush()
     await db.refresh(db_user)
     return db_user
 
@@ -65,3 +79,18 @@ async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> U
     await db.commit()
     await db.refresh(db_user)
     return db_user
+
+
+async def get_user_by_id(db: AsyncSession, user_id: str) -> User | None:
+    """
+    Get a user by ID.
+
+    Args:
+        db: The database session.
+        user_id: The user ID to look up.
+
+    Returns:
+        The user if found, None otherwise.
+    """
+    result = await db.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
