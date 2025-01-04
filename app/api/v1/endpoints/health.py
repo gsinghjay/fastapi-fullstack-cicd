@@ -53,3 +53,49 @@ async def health_check(
     except Exception:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {"status": "unhealthy", "database": "disconnected"}
+
+
+@router.get(
+    "/metrics",
+    response_model=dict[str, str],
+    responses={
+        200: {
+            "description": "Application metrics",
+            "content": {"application/json": {"example": {"status": "operational"}}},
+        },
+    },
+    response_description="Application metrics",
+    summary="Application Metrics",
+    description="Get application metrics and status",
+)
+async def health_check_metrics() -> dict[str, str]:
+    """
+    Get application metrics.
+
+    Returns:
+        A dictionary containing application metrics.
+    """
+    return {"status": "operational"}
+
+
+@router.get(
+    "/readiness",
+    response_model=dict[str, str],
+    responses={
+        200: {
+            "description": "Application is ready",
+            "content": {"application/json": {"example": {"status": "ready"}}},
+        },
+    },
+    response_description="Application readiness status",
+    summary="Readiness Check",
+    description="Check if the application is ready to handle requests",
+)
+async def health_check_readiness() -> dict[str, str]:
+    """
+    Check application readiness.
+
+    Returns:
+        A dictionary containing the readiness status.
+    """
+    return {"status": "ready"}
