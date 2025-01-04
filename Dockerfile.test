@@ -1,0 +1,21 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install Poetry
+RUN pip install poetry
+
+# Copy poetry files
+COPY pyproject.toml poetry.lock ./
+
+# Configure poetry to not create virtual environment inside container
+RUN poetry config virtualenvs.create false
+
+# Install all dependencies including dev dependencies
+RUN poetry install --with dev
+
+# Copy application code
+COPY . .
+
+# Run tests
+CMD ["poetry", "run", "pytest", "-v", "--cov=app", "--cov-report=term-missing"]
