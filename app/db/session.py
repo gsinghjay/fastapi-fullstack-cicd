@@ -1,3 +1,4 @@
+import os
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -9,8 +10,11 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.config import settings
 
+# Use test database URL if in test environment
+database_url = os.getenv("TEST_DATABASE_URL", settings.DATABASE_URL)
+
 engine: AsyncEngine = create_async_engine(
-    settings.DATABASE_URL, echo=settings.DEBUG, future=True
+    database_url, echo=settings.DEBUG, future=True
 )
 
 AsyncSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(

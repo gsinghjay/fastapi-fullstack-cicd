@@ -1,12 +1,59 @@
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import DBSession, get_current_user
 from app.crud import user as user_crud
+from app.models.user import User as UserModel
 from app.schemas.user import User, UserCreate
 
 router = APIRouter()
+
+
+async def list_users_endpoint(
+    db: DBSession,
+) -> list[User]:
+    """
+    List all users endpoint handler.
+
+    Args:
+        db: The database session.
+
+    Returns:
+        List of users.
+    """
+    return await list_users(db)
+
+
+async def list_users(
+    db: DBSession,
+) -> list[User]:
+    """
+    List all users.
+
+    Args:
+        db: The database session.
+
+    Returns:
+        List of users.
+    """
+    users = await user_crud.get_users(db)
+    return [User.model_validate(user) for user in users]
+
+
+router.add_api_route(
+    "/",
+    list_users_endpoint,
+    response_model=list[User],
+    responses={
+        200: {"description": "List of users"},
+    },
+    response_description="List of users",
+    summary="List Users",
+    description="Get a list of all users",
+    operation_id="list_users",
+    methods=["GET"],
+)
 
 
 async def create_user_endpoint(
@@ -57,7 +104,7 @@ async def create_user(
 
 
 router.add_api_route(
-    "",
+    "/",
     create_user_endpoint,
     response_model=User,
     status_code=status.HTTP_201_CREATED,
@@ -74,49 +121,18 @@ router.add_api_route(
 
 
 async def read_user_me_endpoint(
-    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
-    db: DBSession,
+    current_user: Annotated[UserModel, Depends(get_current_user)],
 ) -> User:
     """
     Get current user endpoint handler.
 
     Args:
-        current_user: The current user's data.
-        db: The database session.
+        current_user: The current user.
 
     Returns:
         The current user's details.
-
-    Raises:
-        HTTPException: If the user is not found.
     """
-    return await read_user_me(current_user, db)
-
-
-async def read_user_me(
-    current_user: dict[str, Any],
-    db: DBSession,
-) -> User:
-    """
-    Get current user.
-
-    Args:
-        current_user: The current user's data.
-        db: The database session.
-
-    Returns:
-        The current user's details.
-
-    Raises:
-        HTTPException: If the user is not found.
-    """
-    user = await user_crud.get_user_by_email(db, current_user["sub"])
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-    return User.model_validate(user)
+    return User.model_validate(current_user)
 
 
 router.add_api_route(

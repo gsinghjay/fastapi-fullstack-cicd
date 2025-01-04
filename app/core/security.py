@@ -1,53 +1,25 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
 
+__all__ = [
+    "create_access_token",
+    "decode_access_token",
+    "get_password_hash",
+    "verify_password",
+]
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def create_access_token(data: dict[str, Any]) -> str:
-    """
-    Create JWT access token.
-
-    Args:
-        data: The data to encode in the token.
-
-    Returns:
-        The encoded JWT token.
-    """
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt: str = jwt.encode(to_encode, settings.SECRET_KEY, algorithm="HS256")
-    return encoded_jwt
-
-
-def decode_access_token(token: str) -> dict[str, Any] | None:
-    """
-    Decode JWT access token.
-
-    Args:
-        token: The JWT token to decode.
-
-    Returns:
-        The decoded token data or None if invalid.
-    """
-    try:
-        decoded_token: dict[str, Any] = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=["HS256"]
-        )
-        return decoded_token
-    except JWTError:
-        return None
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    Verify password against hash.
+    Verify a plain password against a hashed password.
 
     Args:
         plain_password: The plain text password.
@@ -56,13 +28,12 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if the password matches, False otherwise.
     """
-    is_valid: bool = pwd_context.verify(plain_password, hashed_password)
-    return is_valid
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
     """
-    Get password hash.
+    Hash a password.
 
     Args:
         password: The password to hash.
@@ -70,5 +41,68 @@ def get_password_hash(password: str) -> str:
     Returns:
         The hashed password.
     """
-    hashed_password: str = pwd_context.hash(password)
-    return hashed_password
+    return pwd_context.hash(password)
+
+
+def create_access_token(
+    subject: str | Any,
+    expires_delta: timedelta | None = None,
+) -> str:
+    """
+    Create a JWT access token.
+
+    Args:
+        subject: The subject to create the token for.
+        expires_delta: Optional expiration time delta.
+
+    Returns:
+        The encoded JWT token.
+    """
+    if expires_delta:
+        expire = datetime.now(UTC) + expires_delta
+    else:
+        expire = datetime.now(UTC) + timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
+
+    to_encode = {"exp": expire, "sub": str(subject)}
+    encoded_jwt = jwt.encode(
+        to_encode,
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
+    return encoded_jwt
+
+
+def decode_access_token(token: str) -> dict[str, Any]:
+    """
+    Decode a JWT token and return its payload.
+
+    Args:
+        token: The JWT token to decode.
+
+    Returns:
+        The decoded token payload.
+
+    Raises:
+        HTTPException: If the token is invalid or expired.
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+        if not payload or "sub" not in payload:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return payload
+    except JWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Could not validate credentials: {str(e)!s}",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from e
