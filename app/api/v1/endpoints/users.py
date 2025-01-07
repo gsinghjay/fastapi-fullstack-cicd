@@ -111,6 +111,7 @@ async def create_user(
             detail="Email already registered",
         )
     db_user = await user_crud.create_user(db, user_in)
+    await db.commit()  # Commit the transaction
     return User.model_validate(db_user)
 
 
