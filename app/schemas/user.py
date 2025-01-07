@@ -1,5 +1,6 @@
 """User schemas."""
 from typing import Annotated
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -34,7 +35,7 @@ class UserUpdate(UserBase):
 class User(UserBase):
     """User response schema."""
 
-    id: str
+    id: UUID
     email: EmailStr  # Override to make required
     is_active: bool  # Override to make required
     is_superuser: bool  # Override to make required
