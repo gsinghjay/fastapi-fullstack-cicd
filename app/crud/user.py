@@ -52,7 +52,7 @@ async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
         hashed_password=get_password_hash(user_in.password),
     )
     db.add(db_user)
-    await db.commit()
+    await db.flush()  # Just flush to get the ID, let the caller handle commit
     await db.refresh(db_user)
     return db_user
 
