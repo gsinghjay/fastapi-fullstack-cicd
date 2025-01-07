@@ -87,13 +87,14 @@ ignore_missing_imports = false
 strict_optional = true
 
 [tool.pytest.ini_options]
-asyncio_mode = "strict"
+asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
-addopts = "--cov=app --cov-report=term-missing --cov-report=xml"
+addopts = "-v --cov=app --cov-report=term-missing --cov-report=xml"
 markers = [
     "unit: marks tests as unit tests",
-    "integration: marks tests as integration tests"
+    "integration: marks tests as integration tests",
+    "regression: marks tests as regression tests",
 ]
 
 [tool.coverage.run]

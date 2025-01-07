@@ -1,11 +1,13 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import DBSession, get_current_user
+from app.core.security import create_access_token, verify_password
 from app.crud import user as user_crud
 from app.models.user import User as UserModel
-from app.schemas.user import User, UserCreate
+from app.schemas.user import Token, User, UserCreate
 
 router = APIRouter()
 
@@ -149,3 +151,46 @@ router.add_api_route(
     operation_id="read_user_me",
     methods=["GET"],
 )
+
+
+@router.post("/login", response_model=Token)
+async def login(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: DBSession,
+) -> Token:
+    """
+    OAuth2 compatible token login, get an access token for future requests.
+
+    Args:
+        form_data: The login form data.
+        db: The database session.
+
+    Returns:
+        The access token.
+
+    Raises:
+        HTTPException: If authentication fails.
+    """
+    user = await user_crud.get_user_by_email(db, form_data.username)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
+
+    if not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User is inactive",
+        )
+
+    return Token(
+        access_token=create_access_token(subject=user.email),
+        token_type="bearer",
+    )
