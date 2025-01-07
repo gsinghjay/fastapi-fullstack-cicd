@@ -1,6 +1,34 @@
 # CHANGELOG
 
 
+## v2.0.1 (2025-01-07)
+
+### Bug Fixes
+
+- **dev**: Add explicit mypy config path in pre-commit
+  ([`fe4403a`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/fe4403a0e1392ca7ccec1b91e0d2b324cb12c2b2))
+
+- Add config-file argument to mypy hook - Ensure consistent mypy behavior in pre-commit
+
+- **users**: Fix string formatting in error messages
+  ([`ca21f39`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/ca21f39feb5d36b3313592e395e61fb2bfe3c6df))
+
+- Use explicit string concatenation instead of f-strings - Fix remaining RUF010 linting issues
+
+- **users**: Improve transaction handling and test consistency
+  ([`92300d7`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/92300d7cdcd5390ecdfe29b2593be2ae18af0a70))
+
+- Fix transaction handling in user update and deactivation endpoints - Add proper commit calls after
+  database operations - Update test_user_data_consistency to avoid superuser deactivation - Fix
+  timezone handling in token invalidation checks
+
+- **users**: Improve transaction handling in user operations
+  ([`82721f5`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/82721f5a40b2c4ad5c8627ceee1329fe953e79f7))
+
+- Remove transaction management from CRUD functions - Let endpoints handle transaction boundaries -
+  Remove redundant rollback calls - Ensure proper error propagation
+
+
 ## v2.0.0 (2025-01-07)
 
 ### Bug Fixes
