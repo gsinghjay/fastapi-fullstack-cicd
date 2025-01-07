@@ -188,7 +188,6 @@ async def update_user_endpoint(
             await db.refresh(updated_user)  # Ensure we have the latest data
             return User.model_validate(updated_user)
     except Exception as e:
-        await db.rollback()  # Ensure transaction is rolled back
         if isinstance(e, HTTPException):
             raise
         raise HTTPException(
@@ -254,7 +253,6 @@ async def deactivate_user_endpoint(
 
             return User.model_validate(updated_user)
     except Exception as e:
-        await db.rollback()  # Ensure transaction is rolled back
         if isinstance(e, HTTPException):
             raise
         raise HTTPException(
@@ -324,7 +322,6 @@ async def change_password_endpoint(
 
             return User.model_validate(updated_user)
     except Exception as e:
-        await db.rollback()  # Ensure transaction is rolled back
         if isinstance(e, HTTPException):
             raise
         raise HTTPException(
