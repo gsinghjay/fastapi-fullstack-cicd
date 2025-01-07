@@ -58,14 +58,17 @@ def create_access_token(
     Returns:
         The encoded JWT token.
     """
+    now = datetime.now(UTC)
     if expires_delta:
-        expire = datetime.now(UTC) + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.now(UTC) + timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-        )
+        expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode = {"exp": expire, "sub": str(subject)}
+    to_encode = {
+        "exp": expire,
+        "sub": str(subject),
+        "iat": int(now.timestamp()),
+    }
     encoded_jwt = jwt.encode(
         to_encode,
         settings.SECRET_KEY,

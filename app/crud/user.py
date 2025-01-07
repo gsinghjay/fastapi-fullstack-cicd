@@ -1,9 +1,22 @@
+from uuid import UUID
+
+from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_password_hash
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
+
+__all__ = [
+    "get_users",
+    "get_user_by_email",
+    "create_user",
+    "update_user",
+    "get_user_by_id",
+    "get_active_superuser_count",
+]
 
 
 async def get_users(db: AsyncSession) -> list[User]:
@@ -45,16 +58,34 @@ async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
 
     Returns:
         The created user.
+
+    Raises:
+        HTTPException: If the email is already registered.
     """
     user_data = user_in.model_dump(exclude={"password"})
     db_user = User(
         **user_data,
         hashed_password=get_password_hash(user_in.password),
     )
-    db.add(db_user)
-    await db.flush()
-    await db.refresh(db_user)
-    return db_user
+
+    try:
+        async with db.begin_nested():  # Create a savepoint
+            db.add(db_user)
+            await db.flush()  # Just flush to get the ID
+            await db.refresh(db_user)
+            return db_user
+    except IntegrityError as e:
+        if "ix_users_email" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered",
+            ) from e
+        raise  # Re-raise other integrity errors
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create user",
+        ) from e
 
 
 async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> User:
@@ -68,20 +99,51 @@ async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> U
 
     Returns:
         The updated user.
+
+    Raises:
+        HTTPException: If the update fails or validation fails.
     """
-    update_data = user_in.model_dump(exclude_unset=True)
-    if "password" in update_data:
-        update_data["hashed_password"] = get_password_hash(update_data.pop("password"))
+    try:
+        update_data = user_in.model_dump(exclude_unset=True)
 
-    for field, value in update_data.items():
-        setattr(db_user, field, value)
+        # Handle password update
+        if "password" in update_data:
+            update_data["hashed_password"] = get_password_hash(
+                update_data.pop("password")
+            )
 
-    await db.commit()
-    await db.refresh(db_user)
-    return db_user
+        # Validate email uniqueness if it's being updated
+        if "email" in update_data and update_data["email"] != db_user.email:
+            existing_user = await get_user_by_email(db, update_data["email"])
+            if existing_user:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already registered",
+                )
+
+        async with db.begin_nested():  # Create a savepoint
+            # Update user fields
+            for field, value in update_data.items():
+                if hasattr(db_user, field):
+                    setattr(db_user, field, value)
+
+            # Flush changes to detect any constraint violations
+            await db.flush()
+            await db.refresh(db_user)
+
+        await db.commit()  # Commit the transaction
+        return db_user
+    except Exception as e:
+        await db.rollback()
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update user",
+        ) from e
 
 
-async def get_user_by_id(db: AsyncSession, user_id: str) -> User | None:
+async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
     """
     Get a user by ID.
 
@@ -94,3 +156,19 @@ async def get_user_by_id(db: AsyncSession, user_id: str) -> User | None:
     """
     result = await db.execute(select(User).where(User.id == user_id))
     return result.scalar_one_or_none()
+
+
+async def get_active_superuser_count(db: AsyncSession) -> int:
+    """
+    Get the count of active superusers.
+
+    Args:
+        db: The database session.
+
+    Returns:
+        The number of active superusers.
+    """
+    result = await db.execute(
+        select(User).where(User.is_superuser == True, User.is_active == True)  # noqa: E712
+    )
+    return len(list(result.scalars().all()))

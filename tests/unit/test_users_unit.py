@@ -2,9 +2,9 @@
 import pytest
 from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.endpoints.users import create_user as create_user_handler
 from app.api.v1.endpoints.users import login
 from app.crud.user import create_user, get_user_by_email
 from app.schemas.user import UserCreate
@@ -15,29 +15,29 @@ HTTP_401_UNAUTHORIZED = status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.unit
-async def test_create_user_handler_validation(db_session: AsyncSession) -> None:
+async def test_create_user_handler_validation() -> None:
     """Test user creation input validation."""
     # Test with invalid email
-    user_data = UserCreate(
-        email="invalid-email",
-        password="testpassword",
-        full_name="Test User",
-        is_active=True,
-        is_superuser=False,
-    )
-    with pytest.raises(ValueError):
-        await create_user_handler(user_data, db_session)
+    with pytest.raises(ValidationError) as exc_info:
+        UserCreate(
+            email="invalid-email",
+            password="testpassword",
+            full_name="Test User",
+            is_active=True,
+            is_superuser=False,
+        )
+    assert "value is not a valid email address" in str(exc_info.value)
 
     # Test with short password
-    user_data = UserCreate(
-        email="test@example.com",
-        password="short",  # too short
-        full_name="Test User",
-        is_active=True,
-        is_superuser=False,
-    )
-    with pytest.raises(ValueError):
-        await create_user_handler(user_data, db_session)
+    with pytest.raises(ValidationError) as exc_info:
+        UserCreate(
+            email="test@example.com",
+            password="short",  # too short
+            full_name="Test User",
+            is_active=True,
+            is_superuser=False,
+        )
+    assert "String should have at least 8 characters" in str(exc_info.value)
 
 
 @pytest.mark.unit
@@ -56,7 +56,7 @@ async def test_create_user_duplicate_email(db_session: AsyncSession) -> None:
 
     # Attempt to create second user with same email
     with pytest.raises(HTTPException) as exc_info:
-        await create_user_handler(user_data, db_session)
+        await create_user(db_session, user_data)
 
     assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
     assert "Email already registered" in str(exc_info.value.detail)
