@@ -37,6 +37,7 @@ async def test_create_user_api_flow(
     db_user = await get_user_by_email(db_session, str(user_data["email"]))
     assert db_user is not None
     assert db_user.email == user_data["email"]
+    await db_session.commit()  # Commit the transaction
 
 
 @pytest.mark.integration
@@ -53,6 +54,7 @@ async def test_user_authentication_flow(
         is_superuser=False,
     )
     db_user = await create_user(db_session, user_in)
+    await db_session.commit()  # Commit the transaction
 
     # Generate access token
     access_token = create_access_token(subject=db_user.email)
@@ -80,6 +82,7 @@ async def test_user_list_pagination(
             is_superuser=False,
         )
         await create_user(db_session, user_in)
+    await db_session.commit()  # Commit the transaction
 
     # Test listing users
     response = await async_client.get("/api/v1/users/")
@@ -103,6 +106,7 @@ async def test_user_update_flow(
         is_superuser=False,
     )
     db_user = await create_user(db_session, user_in)
+    await db_session.commit()  # Commit the transaction
 
     # Generate access token
     access_token = create_access_token(subject=db_user.email)
