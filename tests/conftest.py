@@ -1,3 +1,4 @@
+"""Test configuration and fixtures."""
 import asyncio
 import os
 from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator
@@ -17,11 +18,26 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
+from app.core.security import create_access_token
+from app.crud.user import create_user
 from app.db.base import Base
 from app.main import app as fastapi_app
+from app.models.user import User as UserModel
+from app.schemas.user import UserCreate
 
 # Override settings for testing
 os.environ["ENV_FILE"] = ".env.test"
+
+# Test types
+TEST_TYPES = ["unit", "integration", "regression"]
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Configure pytest with custom markers."""
+    for test_type in TEST_TYPES:
+        config.addinivalue_line(
+            "markers", f"{test_type}: mark test as {test_type} test type"
+        )
 
 
 @pytest.fixture(scope="session")
@@ -207,3 +223,38 @@ async def async_client(
         transport=ASGITransport(app=asgi_app), base_url="http://test"
     ) as client:
         yield client
+
+
+@pytest.fixture
+def test_user_data() -> dict[str, Any]:
+    """Get test user data."""
+    return {
+        "email": "test@example.com",
+        "password": "testpassword",
+        "full_name": "Test User",
+        "is_active": True,
+        "is_superuser": False,
+    }
+
+
+@pytest.fixture
+async def test_user(
+    db_session: AsyncSession, test_user_data: dict[str, Any]
+) -> UserModel:
+    """Create a test user."""
+    user_in = UserCreate(**test_user_data)
+    db_user = await create_user(db_session, user_in)
+    await db_session.commit()
+    return db_user
+
+
+@pytest.fixture
+def test_user_token(test_user: UserModel) -> str:
+    """Get a test user token."""
+    return create_access_token(subject=test_user.email)
+
+
+@pytest.fixture
+def auth_headers(test_user_token: str) -> dict[str, str]:
+    """Get authentication headers."""
+    return {"Authorization": f"Bearer {test_user_token}"}
