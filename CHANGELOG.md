@@ -1,6 +1,69 @@
 # CHANGELOG
 
 
+## v2.0.0 (2025-01-07)
+
+### Bug Fixes
+
+- **auth**: Update OAuth2 token URL to match login endpoint
+  ([`0c8ddbd`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/0c8ddbd3f973843655239cd93cada61069c96eb8))
+
+- **crud**: Add commit after user creation
+  ([`06ada21`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/06ada21c65e88f7b89cbcec1b77dd12ea03faf2f))
+
+- **crud**: Let caller handle transaction commit in create_user
+  ([`e6e022c`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/e6e022c0bd1d699482e6c12b8d72cb9d2eb5249d))
+
+- **schema**: Update User schema to handle UUID type correctly
+  ([`bc796b3`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/bc796b3421cc2c2d1152b00bf78bd97bdc2041d2))
+
+- **tests**: Add explicit commits in integration tests
+  ([`7464fb2`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/7464fb295123633e8b6d69d17c9ca52b3eb3c5f7))
+
+- **users**: Add commit after user creation in endpoint
+  ([`6e132e5`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/6e132e59e1e7ef2759beda055c9f73c9275eb758))
+
+- **users**: Enhance user endpoint transaction handling
+  ([`9d8b9a3`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/9d8b9a3693e357afee6936ebdfd381017444c5e9))
+
+- Improve password change endpoint transaction handling - Add transaction wrapper around
+  deactivation flow - Fix transaction context issues in endpoints - Add proper error propagation
+
+- **users**: Fix argument order in create_user_endpoint
+  ([`9c7b40f`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/9c7b40f94af1254bf029443b2212167d9cd34afe))
+
+- **users**: Improve user CRUD transaction handling
+  ([`65d7329`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/65d73297fb8824722f0ea6ecf631f959e517a916))
+
+- Add nested transaction support for user operations - Fix transaction context issues in create_user
+  and update_user - Add proper error handling with specific error messages - Ensure proper cleanup
+  on failure
+
+### Features
+
+- **users**: Add proper request model for password change endpoint
+  ([`7932b10`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/7932b105bb23b54e25efd17d6eeb5f00adae40d4))
+
+- **users**: Add user update, deactivation, and
+  ([`7558b29`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/7558b29b6586b069ae90485bd25915fcbfbcc969))
+
+### Refactoring
+
+- **users**: Enhance user management and testing
+  ([`e2f6434`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/e2f64340aa040982574dc2f22cd2ce1735ca3746))
+
+- Improve transaction handling in user CRUD operations - Add comprehensive unit, integration, and
+  regression tests - Enhance error handling and validation in user endpoints - Add proper session
+  management and token invalidation - Implement concurrent user creation test n- Add user
+  deactivation flow tests - Improve type hints and documentation
+
+BREAKING CHANGE: Password change endpoint path has changed from to
+
+### BREAKING CHANGES
+
+- **users**: Password change endpoint path has changed from
+
+
 ## v1.0.0 (2025-01-07)
 
 ### Features
