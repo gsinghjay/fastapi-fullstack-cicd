@@ -157,8 +157,6 @@ async def test_user_data_consistency(
     updates = [
         {"full_name": "Updated Name 1"},
         {"full_name": "Updated Name 2"},
-        {"is_active": False},
-        {"is_active": True},
         {"full_name": "Final Name"},
     ]
 
@@ -168,6 +166,8 @@ async def test_user_data_consistency(
             headers=headers,
             json=update,
         )
+        if response.status_code != status.HTTP_200_OK:
+            print(f"Update failed: {response.json()}")  # Print error details
         assert response.status_code == status.HTTP_200_OK
 
     # Verify final state

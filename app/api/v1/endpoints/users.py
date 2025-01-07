@@ -1,30 +1,21 @@
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
 
-from app.api.deps import DBSession, get_current_user, invalidate_user_sessions
-from app.core.security import create_access_token, verify_password
+from app.api.deps import INVALIDATED_TOKENS, DBSession, get_current_user
+from app.core.security import create_access_token, get_password_hash, verify_password
 from app.crud.user import (
     create_user,
     get_active_superuser_count,
     get_user_by_email,
     get_user_by_id,
     get_users,
-    update_user,
 )
 from app.models.user import User as UserModel
-from app.schemas.user import Token, User, UserCreate, UserUpdate
-
-
-class PasswordChange(BaseModel):
-    """Password change request schema."""
-
-    current_password: str
-    new_password: str
-
+from app.schemas.user import Token, User, UserCreate, UserPasswordUpdate, UserUpdate
 
 router = APIRouter()
 
@@ -146,56 +137,57 @@ async def update_user_endpoint(
 
     Args:
         user_id: The ID of the user to update.
-        user_update: The user data to update.
+        user_update: The user update data.
         current_user: The current authenticated user.
         db: The database session.
 
     Returns:
-        The updated user.
+        The updated user details.
 
     Raises:
         HTTPException: If the user is not found or if the current user lacks permission.
     """
     try:
-        async with db.begin():
-            # Check if user exists and get fresh data
-            db_user = await get_user_by_id(db, user_id)
-            if not db_user:
+        # Check if user exists
+        db_user = await get_user_by_id(db, user_id)
+        if not db_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
+        # Check permissions (only superuser or the user themselves can update)
+        if not current_user.is_superuser and current_user.id != db_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions",
+            )
+
+        # Prevent removing superuser status from the last superuser
+        if db_user.is_superuser and user_update.is_superuser is False:
+            # Count active superusers
+            active_superusers = await get_active_superuser_count(db)
+            if active_superusers <= 1:
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User not found",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot remove superuser status from the last superuser",
                 )
 
-            # Check permissions (only superuser or the user themselves can update)
-            if not current_user.is_superuser and current_user.id != db_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not enough permissions",
-                )
+        # Update user
+        update_data = user_update.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(db_user, field, value)
+        await db.flush()
+        await db.refresh(db_user)
+        await db.commit()  # Commit the changes
 
-            # Prevent removing superuser status from the last superuser
-            if db_user.is_superuser and user_update.is_superuser is False:
-                # Count active superusers
-                active_superusers = await get_active_superuser_count(db)
-                if active_superusers <= 1:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Cannot remove superuser status from the last superuser",
-                    )
-
-            # Update user
-            updated_user = await update_user(db, db_user, user_update)
-            await db.refresh(updated_user)  # Ensure we have the latest data
-            return User.model_validate(updated_user)
+        return User.model_validate(db_user)
     except Exception as e:
-        import logging
-
-        logging.error("Error updating user: %s", str(e), exc_info=True)
         if isinstance(e, HTTPException):
             raise
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update user: " + str(e),
+            detail="Failed to update user",
         ) from e
 
 
@@ -206,7 +198,7 @@ async def deactivate_user_endpoint(
     db: DBSession,
 ) -> User:
     """
-    Deactivate user endpoint handler.
+    Deactivate a user endpoint handler.
 
     Args:
         user_id: The ID of the user to deactivate.
@@ -214,47 +206,47 @@ async def deactivate_user_endpoint(
         db: The database session.
 
     Returns:
-        The deactivated user.
+        The deactivated user details.
 
     Raises:
         HTTPException: If the user is not found or if the current user lacks permission.
     """
     try:
-        async with db.begin():
-            # Only superusers can deactivate users
-            if not current_user.is_superuser:
+        # Check if user exists
+        db_user = await get_user_by_id(db, user_id)
+        if not db_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
+        # Check permissions (only superuser can deactivate users)
+        if not current_user.is_superuser:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions",
+            )
+
+        # Prevent deactivating the last superuser
+        if db_user.is_superuser:
+            # Count active superusers
+            active_superusers = await get_active_superuser_count(db)
+            if active_superusers <= 1:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not enough permissions",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot deactivate the last superuser",
                 )
 
-            # Check if user exists and get fresh data
-            db_user = await get_user_by_id(db, user_id)
-            if not db_user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User not found",
-                )
+        # Deactivate user
+        db_user.is_active = False
+        await db.flush()
+        await db.refresh(db_user)
+        await db.commit()  # Commit the changes
 
-            # Prevent deactivating the last superuser
-            if db_user.is_superuser:
-                # Count active superusers
-                active_superusers = await get_active_superuser_count(db)
-                if active_superusers <= 1:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Cannot deactivate the last superuser",
-                    )
+        # Invalidate user's sessions
+        INVALIDATED_TOKENS[str(user_id)] = datetime.now(UTC)
 
-            # Deactivate user
-            user_update = UserUpdate(is_active=False)
-            updated_user = await update_user(db, db_user, user_update)
-            await db.refresh(updated_user)  # Ensure we have the latest data
-
-            # Invalidate all existing sessions for this user
-            invalidate_user_sessions(str(updated_user.id))
-
-            return User.model_validate(updated_user)
+        return User.model_validate(db_user)
     except Exception as e:
         if isinstance(e, HTTPException):
             raise
@@ -267,7 +259,7 @@ async def deactivate_user_endpoint(
 @router.post("/{user_id}/change-password", response_model=User)
 async def change_password_endpoint(
     user_id: UUID,
-    password_change: PasswordChange,
+    password_update: UserPasswordUpdate,
     current_user: Annotated[UserModel, Depends(get_current_user)],
     db: DBSession,
 ) -> User:
@@ -276,54 +268,50 @@ async def change_password_endpoint(
 
     Args:
         user_id: The ID of the user to update.
-        password_change: The password change data.
+        password_update: The password update data.
         current_user: The current authenticated user.
         db: The database session.
 
     Returns:
-        The updated user.
+        The updated user details.
 
     Raises:
-        HTTPException: If the user is not found, current password is incorrect,
-                      or if the current user lacks permission.
+        HTTPException: If the user is not found or if the current user lacks permission.
     """
     try:
-        async with db.begin():
-            # Check if user exists and get fresh data
-            db_user = await get_user_by_id(db, user_id)
-            if not db_user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User not found",
-                )
+        # Check if user exists
+        db_user = await get_user_by_id(db, user_id)
+        if not db_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
 
-            # Check permissions
-            # Only superuser or the user themselves can change password
-            if not current_user.is_superuser and current_user.id != db_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not enough permissions",
-                )
+        # Check permissions (only the user themselves can change their password)
+        if current_user.id != db_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions",
+            )
 
-            # Verify current password
-            if not verify_password(
-                password_change.current_password,
-                db_user.hashed_password,
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Incorrect password",
-                )
+        # Verify current password
+        if not verify_password(
+            password_update.current_password, db_user.hashed_password
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Incorrect password",
+            )
 
-            # Update password
-            user_update = UserUpdate(password=password_change.new_password)
-            updated_user = await update_user(db, db_user, user_update)
-            await db.refresh(updated_user)  # Ensure we have the latest data
+        # Update password
+        db_user.hashed_password = get_password_hash(password_update.new_password)
+        await db.flush()
+        await db.refresh(db_user)
 
-            # Invalidate all existing sessions for this user
-            invalidate_user_sessions(str(updated_user.id))
+        # Invalidate all existing sessions for this user
+        INVALIDATED_TOKENS[str(user_id)] = datetime.now(UTC)
 
-            return User.model_validate(updated_user)
+        return User.model_validate(db_user)
     except Exception as e:
         if isinstance(e, HTTPException):
             raise
@@ -354,23 +342,22 @@ async def get_user_endpoint(
         HTTPException: If the user is not found or if the current user lacks permission.
     """
     try:
-        async with db.begin():
-            # Check if user exists and get fresh data
-            db_user = await get_user_by_id(db, user_id)
-            if not db_user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User not found",
-                )
+        # Check if user exists and get fresh data
+        db_user = await get_user_by_id(db, user_id)
+        if not db_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
 
-            # Check permissions (only superuser or the user themselves can view details)
-            if not current_user.is_superuser and current_user.id != db_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not enough permissions",
-                )
+        # Check permissions (only superuser or the user themselves can view details)
+        if not current_user.is_superuser and current_user.id != db_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions",
+            )
 
-            return User.model_validate(db_user)
+        return User.model_validate(db_user)
     except Exception as e:
         if isinstance(e, HTTPException):
             raise
@@ -382,7 +369,7 @@ async def get_user_endpoint(
 
 @router.post("/me/change-password", response_model=User)
 async def change_password_me_endpoint(
-    password_change: PasswordChange,
+    password_update: UserPasswordUpdate,
     current_user: Annotated[UserModel, Depends(get_current_user)],
     db: DBSession,
 ) -> User:
@@ -390,19 +377,19 @@ async def change_password_me_endpoint(
     Change current user's password endpoint handler.
 
     Args:
-        password_change: The password change data.
+        password_update: The password update data.
         current_user: The current authenticated user.
         db: The database session.
 
     Returns:
-        The updated user.
+        The updated user details.
 
     Raises:
         HTTPException: If the current password is incorrect.
     """
     return await change_password_endpoint(
         user_id=current_user.id,
-        password_change=password_change,
+        password_update=password_update,
         current_user=current_user,
         db=db,
     )

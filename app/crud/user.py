@@ -126,10 +126,6 @@ async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> U
             if hasattr(db_user, field):
                 setattr(db_user, field, value)
 
-        # Flush changes to detect any constraint violations
-        await db.flush()
-        await db.refresh(db_user)
-
         return db_user
     except Exception as e:
         import logging

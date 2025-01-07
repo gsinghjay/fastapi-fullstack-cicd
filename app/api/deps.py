@@ -106,7 +106,7 @@ async def get_current_user(
     if invalidation_time and datetime.fromtimestamp(iat, UTC) < invalidation_time:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session has been invalidated",
+            detail="Token has been invalidated",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
