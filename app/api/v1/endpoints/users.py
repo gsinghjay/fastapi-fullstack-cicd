@@ -7,7 +7,7 @@ from app.api.deps import DBSession, get_current_user
 from app.core.security import create_access_token, verify_password
 from app.crud import user as user_crud
 from app.models.user import User as UserModel
-from app.schemas.user import Token, User, UserCreate
+from app.schemas.user import Token, User, UserCreate, UserUpdate
 
 router = APIRouter()
 
@@ -194,3 +194,121 @@ async def login(
         access_token=create_access_token(subject=user.email),
         token_type="bearer",
     )
+
+
+@router.patch("/{user_id}", response_model=User)
+async def update_user_endpoint(
+    user_id: str,
+    user_update: UserUpdate,
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: DBSession,
+) -> User:
+    """
+    Update user endpoint handler.
+
+    Args:
+        user_id: The ID of the user to update.
+        user_update: The user data to update.
+        current_user: The current authenticated user.
+        db: The database session.
+
+    Returns:
+        The updated user.
+
+    Raises:
+        HTTPException: If the user is not found or if the current user lacks permission.
+    """
+    # Check if user exists
+    db_user = await user_crud.get_user_by_id(db, user_id)
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Check permissions (only superuser or the user themselves can update)
+    if not current_user.is_superuser and current_user.id != db_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions",
+        )
+
+    # Update user
+    updated_user = await user_crud.update_user(db, db_user, user_update)
+    return User.model_validate(updated_user)
+
+
+@router.post("/{user_id}/deactivate", response_model=User)
+async def deactivate_user_endpoint(
+    user_id: str,
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: DBSession,
+) -> User:
+    """
+    Deactivate user endpoint handler.
+
+    Args:
+        user_id: The ID of the user to deactivate.
+        current_user: The current authenticated user.
+        db: The database session.
+
+    Returns:
+        The deactivated user.
+
+    Raises:
+        HTTPException: If the user is not found or if the current user lacks permission.
+    """
+    # Only superusers can deactivate users
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions",
+        )
+
+    # Check if user exists
+    db_user = await user_crud.get_user_by_id(db, user_id)
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Deactivate user
+    user_update = UserUpdate(is_active=False)
+    updated_user = await user_crud.update_user(db, db_user, user_update)
+    return User.model_validate(updated_user)
+
+
+@router.post("/me/change-password", response_model=User)
+async def change_password_endpoint(
+    current_password: str,
+    new_password: str,
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: DBSession,
+) -> User:
+    """
+    Change user password endpoint handler.
+
+    Args:
+        current_password: The current password.
+        new_password: The new password.
+        current_user: The current authenticated user.
+        db: The database session.
+
+    Returns:
+        The updated user.
+
+    Raises:
+        HTTPException: If the current password is incorrect.
+    """
+    # Verify current password
+    if not verify_password(current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password",
+        )
+
+    # Update password
+    user_update = UserUpdate(password=new_password)
+    updated_user = await user_crud.update_user(db, current_user, user_update)
+    return User.model_validate(updated_user)
