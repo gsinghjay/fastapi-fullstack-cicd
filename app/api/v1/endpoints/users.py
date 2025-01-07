@@ -84,19 +84,19 @@ async def create_user_endpoint(
     Raises:
         HTTPException: If the email is already registered.
     """
-    return await create_user(user_in, db)
+    return await create_user(db, user_in)
 
 
 async def create_user(
-    user_in: UserCreate,
     db: DBSession,
+    user_in: UserCreate,
 ) -> User:
     """
     Create new user.
 
     Args:
-        user_in: The user data to create.
         db: The database session.
+        user_in: The user data to create.
 
     Returns:
         The created user.
