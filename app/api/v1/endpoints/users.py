@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -21,6 +22,7 @@ class PasswordChange(BaseModel):
 router = APIRouter()
 
 
+@router.get("/", response_model=list[User])
 async def list_users_endpoint(
     db: DBSession,
 ) -> list[User]:
@@ -52,21 +54,7 @@ async def list_users(
     return [User.model_validate(user) for user in users]
 
 
-router.add_api_route(
-    "/",
-    list_users_endpoint,
-    response_model=list[User],
-    responses={
-        200: {"description": "List of users"},
-    },
-    response_description="List of users",
-    summary="List Users",
-    description="Get a list of all users",
-    operation_id="list_users",
-    methods=["GET"],
-)
-
-
+@router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)
 async def create_user_endpoint(
     user_in: UserCreate,
     db: DBSession,
@@ -115,23 +103,7 @@ async def create_user(
     return User.model_validate(db_user)
 
 
-router.add_api_route(
-    "/",
-    create_user_endpoint,
-    response_model=User,
-    status_code=status.HTTP_201_CREATED,
-    responses={
-        201: {"description": "User created successfully"},
-        400: {"description": "Email already registered"},
-    },
-    response_description="Created user",
-    summary="Create User",
-    description="Create a new user with the provided data",
-    operation_id="create_user",
-    methods=["POST"],
-)
-
-
+@router.get("/me", response_model=User)
 async def read_user_me_endpoint(
     current_user: Annotated[UserModel, Depends(get_current_user)],
 ) -> User:
@@ -145,22 +117,6 @@ async def read_user_me_endpoint(
         The current user's details.
     """
     return User.model_validate(current_user)
-
-
-router.add_api_route(
-    "/me",
-    read_user_me_endpoint,
-    response_model=User,
-    responses={
-        200: {"description": "Current user details"},
-        404: {"description": "User not found"},
-    },
-    response_description="Current user",
-    summary="Get Current User",
-    description="Get details of the currently authenticated user",
-    operation_id="read_user_me",
-    methods=["GET"],
-)
 
 
 @router.post("/login", response_model=Token)
@@ -208,7 +164,7 @@ async def login(
 
 @router.patch("/{user_id}", response_model=User)
 async def update_user_endpoint(
-    user_id: str,
+    user_id: UUID,
     user_update: UserUpdate,
     current_user: Annotated[UserModel, Depends(get_current_user)],
     db: DBSession,
@@ -250,7 +206,7 @@ async def update_user_endpoint(
 
 @router.post("/{user_id}/deactivate", response_model=User)
 async def deactivate_user_endpoint(
-    user_id: str,
+    user_id: UUID,
     current_user: Annotated[UserModel, Depends(get_current_user)],
     db: DBSession,
 ) -> User:
@@ -275,18 +231,27 @@ async def deactivate_user_endpoint(
             detail="Not enough permissions",
         )
 
-    # Check if user exists
-    db_user = await user_crud.get_user_by_id(db, user_id)
-    if not db_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
+    try:
+        async with db.begin():
+            # Check if user exists
+            db_user = await user_crud.get_user_by_id(db, user_id)
+            if not db_user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found",
+                )
 
-    # Deactivate user
-    user_update = UserUpdate(is_active=False)
-    updated_user = await user_crud.update_user(db, db_user, user_update)
-    return User.model_validate(updated_user)
+            # Deactivate user
+            user_update = UserUpdate(is_active=False)
+            updated_user = await user_crud.update_user(db, db_user, user_update)
+            return User.model_validate(updated_user)
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to deactivate user",
+        ) from e
 
 
 @router.post("/me/change-password", response_model=User)
@@ -320,7 +285,62 @@ async def change_password_endpoint(
             detail="Incorrect password",
         )
 
-    # Update password
-    user_update = UserUpdate(password=password_change.new_password)
-    updated_user = await user_crud.update_user(db, current_user, user_update)
-    return User.model_validate(updated_user)
+    try:
+        # Get fresh user data within a transaction
+        async with db.begin():
+            db_user = await user_crud.get_user_by_id(db, current_user.id)
+            if not db_user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found",
+                )
+
+            # Update password
+            user_update = UserUpdate(password=password_change.new_password)
+            updated_user = await user_crud.update_user(db, db_user, user_update)
+            return User.model_validate(updated_user)
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update password",
+        ) from e
+
+
+@router.get("/{user_id}", response_model=User)
+async def get_user_endpoint(
+    user_id: UUID,
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    db: DBSession,
+) -> User:
+    """
+    Get user by ID endpoint handler.
+
+    Args:
+        user_id: The ID of the user to get.
+        current_user: The current authenticated user.
+        db: The database session.
+
+    Returns:
+        The user.
+
+    Raises:
+        HTTPException: If the user is not found or if the current user lacks permission.
+    """
+    # Check if user exists
+    db_user = await user_crud.get_user_by_id(db, user_id)
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Check permissions (only superuser or the user themselves can view)
+    if not current_user.is_superuser and current_user.id != db_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions",
+        )
+
+    return User.model_validate(db_user)
