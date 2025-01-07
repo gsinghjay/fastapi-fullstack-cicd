@@ -2,12 +2,21 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
 
 from app.api.deps import DBSession, get_current_user
 from app.core.security import create_access_token, verify_password
 from app.crud import user as user_crud
 from app.models.user import User as UserModel
 from app.schemas.user import Token, User, UserCreate, UserUpdate
+
+
+class PasswordChange(BaseModel):
+    """Password change request schema."""
+
+    current_password: str
+    new_password: str
+
 
 router = APIRouter()
 
@@ -281,8 +290,7 @@ async def deactivate_user_endpoint(
 
 @router.post("/me/change-password", response_model=User)
 async def change_password_endpoint(
-    current_password: str,
-    new_password: str,
+    password_change: PasswordChange,
     current_user: Annotated[UserModel, Depends(get_current_user)],
     db: DBSession,
 ) -> User:
@@ -290,8 +298,7 @@ async def change_password_endpoint(
     Change user password endpoint handler.
 
     Args:
-        current_password: The current password.
-        new_password: The new password.
+        password_change: The password change data.
         current_user: The current authenticated user.
         db: The database session.
 
@@ -302,13 +309,17 @@ async def change_password_endpoint(
         HTTPException: If the current password is incorrect.
     """
     # Verify current password
-    if not verify_password(current_password, current_user.hashed_password):
+    is_valid = verify_password(
+        password_change.current_password,
+        current_user.hashed_password,
+    )
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect password",
         )
 
     # Update password
-    user_update = UserUpdate(password=new_password)
+    user_update = UserUpdate(password=password_change.new_password)
     updated_user = await user_crud.update_user(db, current_user, user_update)
     return User.model_validate(updated_user)
