@@ -1,43 +1,59 @@
-import uuid
+"""User schemas."""
 from typing import Annotated
 
-from annotated_types import MaxLen, MinLen
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, EmailStr, Field
+
+# Constants
+MIN_PASSWORD_LENGTH = 8
 
 
 class UserBase(BaseModel):
     """Base user schema."""
 
-    email: EmailStr
-    full_name: str
-    is_active: bool = True
-    is_superuser: bool = False
+    email: EmailStr | None = None
+    full_name: str | None = None
+    is_active: bool | None = True
+    is_superuser: bool | None = False
 
 
 class UserCreate(UserBase):
     """User creation schema."""
 
-    password: Annotated[str, MinLen(8), MaxLen(100)]
+    email: EmailStr  # Override to make required
+    password: Annotated[str, Field(min_length=MIN_PASSWORD_LENGTH)]
+    is_active: bool = True  # Override to make required with default
+    is_superuser: bool = False  # Override to make required with default
 
 
 class UserUpdate(UserBase):
     """User update schema."""
 
-    password: Annotated[str, MinLen(8), MaxLen(100)] | None = None
-
-
-class UserInDB(UserBase):
-    """User DB schema."""
-
-    id: uuid.UUID
-    hashed_password: str
-
-    model_config = ConfigDict(from_attributes=True)
+    password: Annotated[str, Field(min_length=MIN_PASSWORD_LENGTH)] | None = None
 
 
 class User(UserBase):
     """User response schema."""
 
-    id: uuid.UUID
+    id: str
+    email: EmailStr  # Override to make required
+    is_active: bool  # Override to make required
+    is_superuser: bool  # Override to make required
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        """Pydantic config."""
+
+        from_attributes = True
+
+
+class UserLogin(BaseModel):
+    """User login schema."""
+
+    email: EmailStr
+    password: str
+
+
+class Token(BaseModel):
+    """Token response schema."""
+
+    access_token: str
+    token_type: str = "bearer"
