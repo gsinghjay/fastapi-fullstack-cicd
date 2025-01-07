@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastapi-fullstack-cicd"
-version = "0.2.0"
+version = "1.0.0"
 description = "A FastAPI application with best practices"
 authors = ["Jay Singh <gsinghjay@gmail.com>"]
 readme = "README.md"

@@ -1,6 +1,34 @@
 # CHANGELOG
 
 
+## v1.0.0 (2025-01-07)
+
+### Features
+
+- **auth**: Implement user login endpoint
+  ([`e8d6c8a`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/e8d6c8a6fe65dc853988c954627391d8d4411dd2))
+
+- Add login endpoint with OAuth2 password flow - Add token response schema - Add comprehensive login
+  unit tests - Handle invalid credentials and inactive users - Restore UserUpdate schema
+
+### Testing
+
+- **users**: Reorganize test structure with unit/integration/regression
+  ([`cfe044b`](https://github.com/gsinghjay/fastapi-fullstack-cicd/commit/cfe044bcde8d298aab0af2ae30580bae70a1067b))
+
+- Split tests into unit, integration, and regression categories - Add pytest markers for test types
+  - Improve test fixtures and isolation - Add comprehensive test cases for user functionality -
+  Configure async test support in pytest - Fix linting and typing issues
+
+BREAKING CHANGE: Test file structure has been reorganized. Old test_users.py has been split into
+  separate files under tests/{unit,integration,regression} directories.
+
+### BREAKING CHANGES
+
+- **users**: Test file structure has been reorganized. Old test_users.py has been split into
+  separate files under tests/{unit,integration,regression} directories.
+
+
 ## v0.2.0 (2025-01-04)
 
 ### Code Style
