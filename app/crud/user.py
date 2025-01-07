@@ -9,6 +9,15 @@ from app.core.security import get_password_hash
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 
+__all__ = [
+    "get_users",
+    "get_user_by_email",
+    "create_user",
+    "update_user",
+    "get_user_by_id",
+    "get_active_superuser_count",
+]
+
 
 async def get_users(db: AsyncSession) -> list[User]:
     """
@@ -147,3 +156,19 @@ async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
     """
     result = await db.execute(select(User).where(User.id == user_id))
     return result.scalar_one_or_none()
+
+
+async def get_active_superuser_count(db: AsyncSession) -> int:
+    """
+    Get the count of active superusers.
+
+    Args:
+        db: The database session.
+
+    Returns:
+        The number of active superusers.
+    """
+    result = await db.execute(
+        select(User).where(User.is_superuser == True, User.is_active == True)  # noqa: E712
+    )
+    return len(list(result.scalars().all()))

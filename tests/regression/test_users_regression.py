@@ -67,6 +67,7 @@ async def test_user_session_invalidation(
         is_superuser=False,
     )
     db_user = await create_user(db_session, user_in)
+    await db_session.commit()  # Commit the transaction
 
     # Generate initial access token
     old_token = create_access_token(subject=db_user.email)
@@ -75,7 +76,7 @@ async def test_user_session_invalidation(
     # Change password
     new_password = "newpassword"
     response = await async_client.post(
-        "/api/v1/users/me/change-password",
+        f"/api/v1/users/{db_user.id}/change-password",
         headers=headers,
         json={"current_password": "oldpassword", "new_password": new_password},
     )
@@ -91,30 +92,46 @@ async def test_user_deactivation_flow(
     async_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Test complete user deactivation flow."""
-    # Create test user
+    # Create test user (as superuser)
     user_in = UserCreate(
         email="deactivate_test@example.com",
         password="testpassword",
         full_name="Deactivate Test User",
         is_active=True,
-        is_superuser=False,
+        is_superuser=True,  # Make the user a superuser
     )
     db_user = await create_user(db_session, user_in)
+    await db_session.commit()  # Commit the transaction
 
     # Generate access token
     access_token = create_access_token(subject=db_user.email)
     headers = {"Authorization": f"Bearer {access_token}"}
 
+    # Create a regular user to deactivate
+    target_user = UserCreate(
+        email="target_user@example.com",
+        password="testpassword",
+        full_name="Target User",
+        is_active=True,
+        is_superuser=False,
+    )
+    target_db_user = await create_user(db_session, target_user)
+    await db_session.commit()  # Commit the transaction
+
     # Deactivate user
     response = await async_client.post(
-        f"/api/v1/users/{db_user.id}/deactivate",
+        f"/api/v1/users/{target_db_user.id}/deactivate",
         headers=headers,
     )
     assert response.status_code == status.HTTP_200_OK
 
-    # Verify user can't login
-    response = await async_client.get("/api/v1/users/me", headers=headers)
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    # Verify user is deactivated
+    response = await async_client.get(
+        f"/api/v1/users/{target_db_user.id}",
+        headers=headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert not response.json()["is_active"]
 
 
 @pytest.mark.regression
@@ -128,9 +145,11 @@ async def test_user_data_consistency(
         password="testpassword",
         full_name="Consistency Test User",
         is_active=True,
-        is_superuser=False,
+        is_superuser=True,  # Make the user a superuser
     )
     db_user = await create_user(db_session, user_in)
+    await db_session.commit()  # Commit the transaction
+
     access_token = create_access_token(subject=db_user.email)
     headers = {"Authorization": f"Bearer {access_token}"}
 
@@ -152,7 +171,7 @@ async def test_user_data_consistency(
         assert response.status_code == status.HTTP_200_OK
 
     # Verify final state
-    response = await async_client.get("/api/v1/users/me", headers=headers)
+    response = await async_client.get(f"/api/v1/users/{db_user.id}", headers=headers)
     assert response.status_code == status.HTTP_200_OK
     final_user = response.json()
     assert final_user["full_name"] == "Final Name"

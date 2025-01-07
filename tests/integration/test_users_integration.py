@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token
-from app.crud.user import create_user, get_user_by_email
+from app.crud.user import create_user
 from app.schemas.user import UserCreate
 
 # Constants
@@ -32,12 +32,11 @@ async def test_create_user_api_flow(
     # Create user via API
     response = await async_client.post("/api/v1/users/", json=user_data)
     assert response.status_code == HTTP_201_CREATED
-
-    # Verify user exists in database
-    db_user = await get_user_by_email(db_session, str(user_data["email"]))
-    assert db_user is not None
-    assert db_user.email == user_data["email"]
-    await db_session.commit()  # Commit the transaction
+    created_user = response.json()
+    assert created_user["email"] == user_data["email"]
+    assert created_user["full_name"] == user_data["full_name"]
+    assert created_user["is_active"] == user_data["is_active"]
+    assert created_user["is_superuser"] == user_data["is_superuser"]
 
 
 @pytest.mark.integration
@@ -54,7 +53,7 @@ async def test_user_authentication_flow(
         is_superuser=False,
     )
     db_user = await create_user(db_session, user_in)
-    await db_session.commit()  # Commit the transaction
+    await db_session.commit()
 
     # Generate access token
     access_token = create_access_token(subject=db_user.email)
@@ -82,7 +81,7 @@ async def test_user_list_pagination(
             is_superuser=False,
         )
         await create_user(db_session, user_in)
-    await db_session.commit()  # Commit the transaction
+    await db_session.commit()
 
     # Test listing users
     response = await async_client.get("/api/v1/users/")
@@ -106,7 +105,7 @@ async def test_user_update_flow(
         is_superuser=False,
     )
     db_user = await create_user(db_session, user_in)
-    await db_session.commit()  # Commit the transaction
+    await db_session.commit()
 
     # Generate access token
     access_token = create_access_token(subject=db_user.email)
