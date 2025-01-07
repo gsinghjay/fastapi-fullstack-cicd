@@ -42,6 +42,7 @@ repos:
         language: system
         types: [python]
         require_serial: true
+        args: ["--config-file", "pyproject.toml"]
 
     -   id: bandit
         name: bandit

@@ -121,25 +121,21 @@ async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> U
                     detail="Email already registered",
                 )
 
-        async with db.begin_nested():  # Create a savepoint
-            # Update user fields
-            for field, value in update_data.items():
-                if hasattr(db_user, field):
-                    setattr(db_user, field, value)
+        # Update user fields
+        for field, value in update_data.items():
+            if hasattr(db_user, field):
+                setattr(db_user, field, value)
 
-            # Flush changes to detect any constraint violations
-            await db.flush()
-            await db.refresh(db_user)
-
-        await db.commit()  # Commit the transaction
         return db_user
     except Exception as e:
-        await db.rollback()
+        import logging
+
+        logging.error("Error in update_user: %s", str(e), exc_info=True)
         if isinstance(e, HTTPException):
             raise
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update user",
+            detail="Failed to update user: " + str(e),
         ) from e
 
 

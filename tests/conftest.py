@@ -171,9 +171,8 @@ async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, N
     """
     Get a test database session.
 
-    This fixture provides a database session for testing with automatic rollback.
-    It uses a transaction that is rolled back after each test,
-    ensuring test isolation.
+    This fixture provides a database session for testing.
+    The session is closed after each test.
 
     Args:
         test_engine: The test database engine.
@@ -191,10 +190,10 @@ async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, N
     )
 
     async with testing_session_local() as session:
-        # Start a transaction
-        async with session.begin():
+        try:
             yield session
-            # The transaction will be rolled back when the session is closed
+        finally:
+            await session.close()
 
 
 @pytest.fixture(scope="session")
