@@ -132,11 +132,14 @@ async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> U
 
         return db_user
     except Exception as e:
+        import logging
+
+        logging.error("Error in update_user: %s", str(e), exc_info=True)
         if isinstance(e, HTTPException):
             raise
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update user",
+            detail="Failed to update user: " + str(e),
         ) from e
 
 

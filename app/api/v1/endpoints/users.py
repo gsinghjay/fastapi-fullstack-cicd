@@ -188,11 +188,14 @@ async def update_user_endpoint(
             await db.refresh(updated_user)  # Ensure we have the latest data
             return User.model_validate(updated_user)
     except Exception as e:
+        import logging
+
+        logging.error("Error updating user: %s", str(e), exc_info=True)
         if isinstance(e, HTTPException):
             raise
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update user",
+            detail="Failed to update user: " + str(e),
         ) from e
 
 
